@@ -13,6 +13,12 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.
 
+## Supabase Auth setup
+
+1. Create a Supabase project, enable Email and Google under **Authentication → Providers**, and add `http://localhost:3000/auth/callback` as an allowed redirect URL.
+2. Copy `.env.example` to `.env.local` and fill in your Supabase project URL and publishable key.
+3. Run `supabase/migrations/20260805_create_users.sql` in the Supabase SQL Editor to create the RLS-protected user profile table.
+
 ## Structure
 
 - `app/` — App Router routes and global styles
