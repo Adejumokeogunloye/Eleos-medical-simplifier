@@ -33,11 +33,15 @@ export function AuthCard({ mode }: { mode: Mode }) {
     setLoading(true);
     const supabase = createClient();
     if (isSignup) {
-      const { error: authError } = await supabase.auth.signUp({ email, password, options: { data: { name: String(data.get("name") ?? "").trim() }, emailRedirectTo: `${window.location.origin}/auth/callback?next=/dashboard` } });
+      const { error: authError } = await supabase.auth.signUp({ email, password, options: { data: { name: String(data.get("name") ?? "").trim() }, emailRedirectTo: `${window.location.origin}/auth/callback?next=/onboarding` } });
       if (authError) setError(authError.message); else setMessage("Check your email to confirm your account, then sign in.");
     } else if (mode === "login") {
       const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
-      if (authError) setError(authError.message); else router.push(new URLSearchParams(window.location.search).get("next") || "/dashboard");
+      if (authError) { setError(authError.message); } else {
+        const { data: { user } } = await supabase.auth.getUser();
+        const { data: profile } = user ? await supabase.from("users").select("onboarding_completed").eq("id", user.id).maybeSingle() : { data: null };
+        router.push(profile?.onboarding_completed ? new URLSearchParams(window.location.search).get("next") || "/dashboard" : "/onboarding");
+      }
     } else if (mode === "forgot") {
       const { error: authError } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/auth/callback?next=/update-password` });
       if (authError) setError(authError.message); else setMessage("If that email has an account, a reset link is on its way.");
@@ -50,7 +54,7 @@ export function AuthCard({ mode }: { mode: Mode }) {
 
   async function googleSignIn() {
     setError(null); setLoading(true);
-    const { error: authError } = await createClient().auth.signInWithOAuth({ provider: "google", options: { redirectTo: `${window.location.origin}/auth/callback?next=/dashboard` } });
+    const { error: authError } = await createClient().auth.signInWithOAuth({ provider: "google", options: { redirectTo: `${window.location.origin}/auth/callback?next=/onboarding` } });
     if (authError) { setError(authError.message); setLoading(false); }
   }
 

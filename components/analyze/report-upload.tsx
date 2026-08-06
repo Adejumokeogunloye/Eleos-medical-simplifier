@@ -1,0 +1,80 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useDropzone } from "react-dropzone";
+import { AlertCircle, CheckCircle2, FileText, ImageIcon, LoaderCircle, ShieldCheck, UploadCloud } from "lucide-react";
+import { ReportResults } from "@/components/results/report-results";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
+import type { SimplifiedReport } from "@/types/report";
+
+const reportTypes = ["X-ray", "Lab Report", "Discharge Summary", "Diagnostic Imaging", "Other"] as const;
+
+export function ReportUpload() {
+  const [file, setFile] = useState<File | null>(null);
+  const [reportType, setReportType] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [summary, setSummary] = useState<SimplifiedReport | null>(null);
+
+  useEffect(() => {
+    if (!file || !file.type.startsWith("image/")) { setPreviewUrl(null); return; }
+    const url = URL.createObjectURL(file);
+    setPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
+
+  const dropzone = useDropzone({
+    accept: { "image/jpeg": [".jpg", ".jpeg"], "image/png": [".png"], "application/pdf": [".pdf"] },
+    maxSize: 20 * 1024 * 1024,
+    maxFiles: 1,
+    onDropAccepted: ([acceptedFile]) => { setFile(acceptedFile); setError(null); setSummary(null); },
+    onDropRejected: (rejections) => {
+      const code = rejections[0]?.errors[0]?.code;
+      setError(code === "file-too-large" ? "Choose a file smaller than 20 MB." : "Choose one JPG, PNG, or PDF file.");
+      setFile(null); setSummary(null);
+    },
+  });
+
+  async function analyze() {
+    if (!file || !reportType) return;
+    setIsAnalyzing(true); setError(null); setSummary(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const response = await fetch("/api/parse", { method: "POST", body: formData });
+      const parsed: { text?: string; error?: string } = await response.json();
+      if (!response.ok || !parsed.text) throw new Error(parsed.error ?? "We couldn't read this file — try a clearer scan or a text-based PDF.");
+
+      const simplifyResponse = await fetch("/api/simplify", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: parsed.text }) });
+      const simplified = await simplifyResponse.json() as SimplifiedReport & { error?: string; result?: SimplifiedReport };
+      const nextSummary = simplified.result ?? simplified;
+      if (!simplifyResponse.ok || !nextSummary.summary) throw new Error(simplified.error ?? "We couldn't simplify this report right now. Please try again in a moment.");
+      setSummary(nextSummary);
+    } catch (caughtError) {
+      setError(caughtError instanceof Error ? caughtError.message : "We couldn't read this file — try a clearer scan or a text-based PDF.");
+    } finally { setIsAnalyzing(false); }
+  }
+
+  const isUploaded = Boolean(file);
+  const stateIcon = error ? <AlertCircle className="size-8" /> : isUploaded ? <CheckCircle2 className="size-8" /> : <UploadCloud className="size-8" />;
+  const stateText = error ? "There was a problem with that file" : isUploaded ? "File ready to analyze" : dropzone.isDragActive ? "Drop the file here" : "Drop your report here";
+
+  return <div className="space-y-8">
+    <Card className="mx-auto max-w-3xl border-white/80 bg-white/90 shadow-healthcare backdrop-blur-xl">
+      <CardHeader><span className="flex size-12 items-center justify-center rounded-2xl gradient-healthcare text-white"><FileText className="size-6" /></span><div><CardTitle className="text-2xl">Analyze a medical report</CardTitle><CardDescription>Choose a report image or PDF to extract its text for an educational explanation.</CardDescription></div></CardHeader>
+      <CardContent className="space-y-6">
+        <button type="button" {...dropzone.getRootProps()} className={cn("w-full rounded-2xl border-2 border-dashed p-6 text-center transition sm:p-10", error ? "border-healthcare-pink bg-pink-50 text-healthcare-pink" : isUploaded ? "border-primary/40 bg-healthcare-lavender text-primary" : dropzone.isDragActive ? "border-primary bg-primary/5 text-primary" : "border-healthcare-lilac bg-healthcare-lavender/50 text-healthcare-soft-ink hover:border-primary/50 hover:bg-healthcare-lavender")}><input {...dropzone.getInputProps()} /><span className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-white shadow-sm">{stateIcon}</span><p className="mt-4 font-bold">{stateText}</p><p className="mt-1 text-sm">JPG, PNG, or PDF · up to 20 MB</p></button>
+        {file && <div className="flex items-center gap-4 rounded-2xl border border-healthcare-lilac bg-white p-4"><div className="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-healthcare-lavender text-primary">{previewUrl ? <img src={previewUrl} alt="Uploaded report preview" className="size-full object-cover" /> : <FileText className="size-6" />}</div><div className="min-w-0 flex-1"><p className="truncate text-sm font-bold text-healthcare-ink">{file.name}</p><p className="mt-1 text-xs text-healthcare-soft-ink">{(file.size / 1024 / 1024).toFixed(1)} MB · {file.type === "application/pdf" ? "PDF document" : "Image file"}</p></div><ImageIcon className="size-5 text-primary" /></div>}
+        <Select label="What kind of report is this?" value={reportType} onChange={(event) => { setReportType(event.target.value); setError(null); }}><option value="">Select a report type</option>{reportTypes.map((type) => <option key={type} value={type}>{type}</option>)}</Select>
+        <div className="flex items-start gap-3 rounded-2xl bg-healthcare-lavender p-4 text-sm leading-6 text-healthcare-ink"><ShieldCheck className="mt-0.5 size-5 shrink-0 text-primary" /><p>Files are processed to generate an educational summary only, not a diagnosis. Your uploaded file is not saved.</p></div>
+        {error && <p className="rounded-xl bg-pink-50 px-4 py-3 text-sm font-semibold text-healthcare-pink" role="alert">{error}</p>}
+        <Button className="w-full" size="lg" disabled={!file || !reportType || isAnalyzing} onClick={analyze}>{isAnalyzing ? <><LoaderCircle className="size-4 animate-spin" />Preparing your summary</> : <><FileText className="size-4" />Analyze report</>}</Button>
+      </CardContent>
+    </Card>
+    {summary && <ReportResults result={summary} />}
+  </div>;
+}
