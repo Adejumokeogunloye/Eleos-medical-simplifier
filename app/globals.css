@@ -5,9 +5,17 @@
   :root { --background: 252 100% 98%; --foreground: 258 40% 18%; --card: 0 0% 100%; --card-foreground: 258 40% 18%; --primary: 263 70% 50%; --primary-foreground: 0 0% 100%; --secondary: 255 100% 97%; --secondary-foreground: 258 40% 28%; --muted: 250 100% 98%; --muted-foreground: 255 12% 47%; --accent: 330 81% 60%; --accent-foreground: 0 0% 100%; --border: 254 40% 91%; --input: 254 40% 91%; --ring: 263 70% 50%; --radius: 1rem; }
   * { @apply border-border; }
   body { @apply bg-background text-foreground antialiased; font-family: "Inter", Arial, sans-serif; }
+  :focus-visible { @apply outline-none ring-2 ring-primary ring-offset-2; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
 }
 @layer utilities {
   .gradient-healthcare { @apply bg-healthcare-gradient; }
   .gradient-healthcare-soft { @apply bg-healthcare-soft; }
   .text-gradient-healthcare { @apply bg-healthcare-gradient bg-clip-text text-transparent; }
+}
+@media print {
+  body { background: white; }
+  .print\:hidden { display: none !important; }
 }

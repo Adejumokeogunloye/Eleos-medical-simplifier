@@ -11,3 +11,4 @@ pnpm-debug.log*
 *.tsbuildinfo
 work/.project-git/
 work/*.log
+/backups/

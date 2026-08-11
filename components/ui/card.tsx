@@ -2,7 +2,7 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 
 export function Card({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("rounded-2xl border border-healthcare-lilac bg-card p-6 shadow-healthcare", className)} {...props} />;
+  return <div className={cn("rounded-2xl border border-healthcare-lilac bg-card p-6 shadow-healthcare transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/20 hover:shadow-lg", className)} {...props} />;
 }
 export function CardHeader({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) { return <div className={cn("mb-4 flex items-start justify-between gap-4", className)} {...props} />; }
 export function CardTitle({ className, ...props }: React.HTMLAttributes<HTMLHeadingElement>) { return <h3 className={cn("text-lg font-bold tracking-tight text-healthcare-ink", className)} {...props} />; }
